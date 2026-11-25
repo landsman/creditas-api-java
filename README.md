@@ -38,6 +38,7 @@ try (var creditas = new CreditasClient()) {
 | Read | For |
 |---|---|
 | [Creditas API](.docs/creditas-api.md) | what the bank offers, the key, the endpoints, what is still unknown |
+| [Spring Boot starter](modules/creditas-api-spring-boot-starter/README.md) | `creditas.*` in `application.yml`, the client and the key as beans |
 
 Building it: `make build` (format check, Error Prone with NullAway, tests, declared dependencies); `make` lists the
 rest.

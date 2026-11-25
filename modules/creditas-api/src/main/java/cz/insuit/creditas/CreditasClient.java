@@ -342,8 +342,16 @@ public final class CreditasClient implements AutoCloseable {
             return this;
         }
 
-        /** How long one request may take; 30 seconds unless set. */
+        /**
+         * How long one request may take; 30 seconds unless set.
+         *
+         * @throws IllegalArgumentException when it is zero or negative, which every request would refuse; here it
+         *     fails at startup rather than on the first call
+         */
         public Builder requestTimeout(Duration requestTimeout) {
+            if (requestTimeout.isNegative() || requestTimeout.isZero()) {
+                throw new IllegalArgumentException("requestTimeout must be positive: " + requestTimeout);
+            }
             this.requestTimeout = requestTimeout;
             return this;
         }

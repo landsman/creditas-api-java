@@ -40,3 +40,5 @@ jobs:
             25
       - uses: gradle/actions/setup-gradle@v6
       - run: make build TESTS_JDK=${{ matrix.jdk }}
+      # The starter compiles against Spring Boot 3.5; this runs its tests on 4, the version a new application brings.
+      - run: ./gradlew :modules:creditas-api-spring-boot-starter:test -PtestSpringBoot=4.1.2 -PtestsJdk=${{ matrix.jdk }}

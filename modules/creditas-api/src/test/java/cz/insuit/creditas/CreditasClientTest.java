@@ -15,6 +15,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Currency;
@@ -204,13 +205,22 @@ class CreditasClientTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {" acc-1 ", " acc-1", "acc-1​", "﻿acc-1", "\tacc-1 "})
+    @ValueSource(strings = {"PT0S", "-PT1S"})
+    void aTimeoutHttpRequestWouldRefuseIsRefusedWhenBuilding(String timeout) {
+        var builder = CreditasClient.builder();
+        var duration = Duration.parse(timeout);
+
+        assertThrows(IllegalArgumentException.class, () -> builder.requestTimeout(duration));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"\u00A0acc-1\u00A0", "\u202Facc-1", "acc-1\u200B", "\uFEFFacc-1", "\tacc-1 "})
     void anAccountIdLosesWhatAPasteBringsAtItsEnds(String pasted) {
         assertEquals("acc-1", CreditasClient.accountIdOf(pasted));
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", " ", " ", "​﻿"})
+    @ValueSource(strings = {"", " ", "\u00A0", "\u200B\uFEFF"})
     void aBlankAccountIdIsRefused(String blank) {
         assertThrows(IllegalArgumentException.class, () -> CreditasClient.accountIdOf(blank));
     }
