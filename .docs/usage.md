@@ -27,7 +27,7 @@ class IncomingPayments(
 ) {
     private val accountId = requireNotNull(properties.accountId) { "creditas.account-id" }
 
-    @Scheduled(cron = "17 */10 * * * *")
+    @Scheduled(fixedDelay = 10, timeUnit = TimeUnit.MINUTES)
     fun match() {
         val today = LocalDate.now(ZoneId.of("Europe/Prague"))
         try {
@@ -64,8 +64,8 @@ class IncomingPayments {
         this.invoices = invoices;
     }
 
-    // Every 10 minutes, at second 17. Three days back, since a payment is dated by its value date, not when it arrived.
-    @Scheduled(cron = "17 */10 * * * *")
+    // Three days back, since a payment is dated by its value date, not when it arrived.
+    @Scheduled(fixedDelay = 10, timeUnit = TimeUnit.MINUTES)
     void match() {
         var today = LocalDate.now(ZoneId.of("Europe/Prague"));
         try {
