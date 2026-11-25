@@ -17,24 +17,7 @@ configuration entirely and passes each one's key with the call: an empty value, 
 variable unset, still counts as set and stops the application. Keep the key in the environment, never in a committed
 file.
 
-```java
-@Service
-class Payments {
-    private final CreditasClient creditas;
-    private final ApiKey key;
-    private final String accountId;
-
-    Payments(CreditasClient creditas, ApiKey key, CreditasProperties properties) {
-        this.creditas = creditas;
-        this.key = key;
-        this.accountId = Objects.requireNonNull(properties.accountId(), "creditas.account-id");
-    }
-
-    List<Transaction> lastWeek() {
-        return creditas.transactions(key, accountId, LocalDate.now().minusDays(7), LocalDate.now());
-    }
-}
-```
+A job that marks invoices paid, in Java and Kotlin: [Using the library](../../.docs/usage.md#spring-boot).
 
 | Property | Default |
 |---|---|

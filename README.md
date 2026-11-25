@@ -2,45 +2,23 @@
 
 **Read a Banka CREDITAS account from Java: its balance and every payment, with the payer's name, all three symbols
 and the message.** No contract with the bank and no PSD2 licence: the account holder issues a key in internet banking
-and hands it to your application.
+and hands it to your application. For Java 21+ and Kotlin; a Spring Boot starter sets it up from `application.yml`.
 
-For Java 21+ and Kotlin, one jar, no framework required.
-
-**Status: not tried against a live account yet.** The client follows the bank's public specification and its PDF;
-the tests run on synthetic answers. What a live account has to settle is under [open questions](.docs/creditas-api.md#open-questions).
-
-## Using it
+**Status: not tried against a live account yet**, so not published either; see the
+[open questions](https://github.com/landsman/creditas-api-java/issues).
 
 ```java
 try (var creditas = new CreditasClient()) {
-    var key = new ApiKey(System.getenv("CREDITAS_KEY"));
-    var accountId = "ded30c093bbe9c2d6e8735c8b4a7efc8a4bfbcc4"; // the key's detail in internet banking
-
-    var balance = creditas.balance(key, accountId);
-    for (var t : creditas.transactions(key, accountId, LocalDate.now().minusDays(7), LocalDate.now())) {
-        if (t.direction() == Transaction.Direction.CREDIT && "2026017".equals(t.symbols().variable())) {
-            // mark invoice 2026017 paid with t.amount()
-        }
-    }
+    var payments = creditas.transactions(new ApiKey(key), accountId, LocalDate.now().minusDays(7), LocalDate.now());
 }
 ```
 
-- **One key opens one account**, and the key carries the rights of the person who issued it; see
-  [setting it up](.docs/creditas-api.md#setting-it-up).
-- **Every failure is a `CreditasException`**, one subtype per thing to do about it: `InvalidKey` (ask the account
-  holder for a new key), `Rejected` (the request itself is wrong), `Failed` (try later), `NoAnswer`,
-  `InvalidResponse`. Creditas answers every error with HTTP 500, so the subtype comes from the error's name.
-- **A transaction has a date, not a time.** Deduplicate by `Transaction.id()`.
-- **`toString()` leaks nothing**: not the key, not a counterparty's name or account, not the message.
-
-## Docs
-
 | Read | For |
 |---|---|
-| [Creditas API](.docs/creditas-api.md) | what the bank offers, the key, the endpoints, what is still unknown |
-| [Spring Boot starter](modules/creditas-api-spring-boot-starter/README.md) | `creditas.*` in `application.yml`, the client and the key as beans |
+| [Using the library](.docs/usage.md) | reading payments, the failures, what a transaction holds |
+| [Spring Boot starter](modules/creditas-api-spring-boot-starter/README.md) | `creditas.*` in `application.yml`, a job that marks invoices paid |
+| [Creditas API](.docs/creditas-api.md) | what the bank offers, issuing a key, the endpoints, what is still unknown |
+| [Creditas: Creditas API](https://www.creditas.cz/creditas-api) | the bank's own page, with its PDF documentation |
+| [PremiumAPI on SwaggerHub](https://app.swaggerhub.com/apis/Creditas/PremiumAPI/1.0.1) | the specification this client follows |
 
-Building it: `make build` (format check, Error Prone with NullAway, tests, declared dependencies); `make` lists the
-rest.
-
-Licence: [Apache 2.0](LICENSE)
+`make build` builds and checks it; `make` lists the rest. Licence: [Apache 2.0](LICENSE)
