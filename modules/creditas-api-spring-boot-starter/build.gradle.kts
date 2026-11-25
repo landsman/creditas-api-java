@@ -10,11 +10,15 @@ val springBoot = dependencies.platform("org.springframework.boot:spring-boot-dep
 
 // The tests run on 3.5.16 too, unless -PtestSpringBoot names another: CI runs them again on Spring Boot 4, the version
 // an application is likelier to bring, so a call that moved there fails here rather than in a caller's app.
+// On that run the BOM is enforced: a Boot app gets the versions Boot manages, Jackson 3.1 on 4.1.2 where the client
+// builds on 3.3, and Gradle would otherwise test the higher one and miss a call newer than what the app has.
+val otherSpringBoot = providers.gradleProperty("testSpringBoot")
 val testSpringBoot =
-    dependencies.platform(
-        "org.springframework.boot:spring-boot-dependencies:" +
-            providers.gradleProperty("testSpringBoot").getOrElse("3.5.16"),
-    )
+    if (otherSpringBoot.isPresent) {
+        dependencies.enforcedPlatform("org.springframework.boot:spring-boot-dependencies:${otherSpringBoot.get()}")
+    } else {
+        springBoot
+    }
 
 dependencies {
     api(project(":modules:creditas-api"))
