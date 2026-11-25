@@ -33,6 +33,8 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-autoconfigure")
     testImplementation("org.springframework.boot:spring-boot-test")
     testImplementation("org.springframework:spring-context")
+    // NestedExceptionUtils, to assert what stopped the application.
+    testImplementation("org.springframework:spring-core")
     // ApplicationContextRunner hands the test an AssertJ type, so it has to be on the classpath.
     testImplementation("org.assertj:assertj-core")
     testImplementation("org.junit.jupiter:junit-jupiter")

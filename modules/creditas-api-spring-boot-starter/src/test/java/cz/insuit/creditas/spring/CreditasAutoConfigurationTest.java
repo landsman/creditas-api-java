@@ -2,8 +2,10 @@ package cz.insuit.creditas.spring;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sun.net.httpserver.HttpServer;
 import cz.insuit.creditas.ApiKey;
@@ -12,12 +14,15 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
+import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.NestedExceptionUtils;
 
 class CreditasAutoConfigurationTest {
 
@@ -34,22 +39,23 @@ class CreditasAutoConfigurationTest {
 
     @Test
     void givesTheKeyOfTheOneAccountWhenItIsSet() {
-        context.withPropertyValues("creditas.key=Ab12\n", "creditas.account-id=acc-1")
+        // What a pasted key carries inside it; TestPropertyValues trims only ASCII whitespace, so these reach ApiKey.
+        context.withPropertyValues("creditas.key=Ab\u00A012\u200B", "creditas.account-id=acc-1")
                 .run(app -> {
-                    assertEquals(new ApiKey("Ab12"), app.getBean(ApiKey.class));
+                    assertEquals("Ab\u00A012\u200B", app.getBean(CreditasProperties.class).key());
+                    assertEquals("Ab12", app.getBean(ApiKey.class).value());
                     assertEquals("acc-1", app.getBean(CreditasProperties.class).accountId());
                 });
     }
 
     @Test
     void aKeyWithNothingInItStopsTheApplication() {
-        context.withPropertyValues("creditas.key=  ").run(app -> assertNotNull(app.getStartupFailure()));
+        context.withPropertyValues("creditas.key=\u00A0\u200B").run(app -> assertRefusedByTheLibrary(app));
     }
 
     @Test
     void aBaseUriThatIsNotOneStopsTheApplication() {
-        context.withPropertyValues("creditas.base-uri=api.creditas.cz")
-                .run(app -> assertNotNull(app.getStartupFailure()));
+        context.withPropertyValues("creditas.base-uri=api.creditas.cz").run(app -> assertRefusedByTheLibrary(app));
     }
 
     @Test
@@ -83,6 +89,14 @@ class CreditasAutoConfigurationTest {
         context.withUserConfiguration(OwnClient.class).run(app -> {
             assertSame(app.getBean(OwnClient.class).client, app.getBean(CreditasClient.class));
         });
+    }
+
+    /** The client's own check, not any startup failure: a missing class on another Spring Boot would also fail one. */
+    private static void assertRefusedByTheLibrary(AssertableApplicationContext app) {
+        var cause = NestedExceptionUtils.getMostSpecificCause(Objects.requireNonNull(app.getStartupFailure()));
+        assertInstanceOf(IllegalArgumentException.class, cause);
+        var frame = cause.getStackTrace()[0];
+        assertTrue(frame.getClassName().startsWith("cz.insuit.creditas."), frame.toString());
     }
 
     @Configuration(proxyBeanMethods = false)
