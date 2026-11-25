@@ -61,6 +61,11 @@ class CreditasAutoConfigurationTest {
     }
 
     @Test
+    void aTimeoutThatCannotBeUsedStopsTheApplication() {
+        context.withPropertyValues("creditas.request-timeout=0s").run(app -> assertRefusedByTheLibrary(app));
+    }
+
+    @Test
     void callsTheBaseUriItIsGiven() throws IOException {
         var path = new AtomicReference<String>();
         var server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);

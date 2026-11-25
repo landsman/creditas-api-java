@@ -15,6 +15,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Currency;
@@ -201,6 +202,15 @@ class CreditasClientTest {
         try (var client = new CreditasClient()) {
             assertThrows(IllegalArgumentException.class, () -> client.transactions(KEY, "acc", TO, FROM));
         }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"PT0S", "-PT1S"})
+    void aTimeoutHttpRequestWouldRefuseIsRefusedWhenBuilding(String timeout) {
+        var builder = CreditasClient.builder();
+        var duration = Duration.parse(timeout);
+
+        assertThrows(IllegalArgumentException.class, () -> builder.requestTimeout(duration));
     }
 
     @ParameterizedTest
