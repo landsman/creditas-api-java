@@ -204,13 +204,13 @@ class CreditasClientTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {" acc-1 ", " acc-1", "acc-1​", "﻿acc-1", "\tacc-1 "})
+    @ValueSource(strings = {"\u00A0acc-1\u00A0", "\u202Facc-1", "acc-1\u200B", "\uFEFFacc-1", "\tacc-1 "})
     void anAccountIdLosesWhatAPasteBringsAtItsEnds(String pasted) {
         assertEquals("acc-1", CreditasClient.accountIdOf(pasted));
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", " ", " ", "​﻿"})
+    @ValueSource(strings = {"", " ", "\u00A0", "\u200B\uFEFF"})
     void aBlankAccountIdIsRefused(String blank) {
         assertThrows(IllegalArgumentException.class, () -> CreditasClient.accountIdOf(blank));
     }

@@ -10,13 +10,13 @@ import org.junit.jupiter.params.provider.ValueSource;
 class ApiKeyTest {
 
     @ParameterizedTest
-    @ValueSource(strings = {"Ab12", " Ab12 ", " Ab12", "Ab 12", "Ab12​", "﻿Ab12", "\tAb12\n"})
+    @ValueSource(strings = {"Ab12", " Ab12 ", "\u00A0Ab12", "Ab\u202F12", "Ab12\u200B", "\uFEFFAb12", "\tAb12\n"})
     void keepsTheLettersAndDigitsOfAPastedKey(String pasted) {
         assertEquals("Ab12", new ApiKey(pasted).value());
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", " ", " ", "​﻿"})
+    @ValueSource(strings = {"", " ", "\u00A0", "\u200B\uFEFF"})
     void aBlankKeyIsRefused(String blank) {
         assertThrows(IllegalArgumentException.class, () -> new ApiKey(blank));
     }

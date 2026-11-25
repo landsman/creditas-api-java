@@ -42,7 +42,9 @@ class CreditasAutoConfigurationTest {
         // What a pasted key carries inside it; TestPropertyValues trims only ASCII whitespace, so these reach ApiKey.
         context.withPropertyValues("creditas.key=Ab\u00A012\u200B", "creditas.account-id=acc-1")
                 .run(app -> {
-                    assertEquals("Ab\u00A012\u200B", app.getBean(CreditasProperties.class).key());
+                    assertEquals(
+                            "Ab\u00A012\u200B",
+                            app.getBean(CreditasProperties.class).key());
                     assertEquals("Ab12", app.getBean(ApiKey.class).value());
                     assertEquals("acc-1", app.getBean(CreditasProperties.class).accountId());
                 });
