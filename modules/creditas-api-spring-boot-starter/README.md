@@ -17,46 +17,7 @@ configuration entirely and passes each one's key with the call: an empty value, 
 variable unset, still counts as set and stops the application. Keep the key in the environment, never in a committed
 file.
 
-A job that marks invoices paid:
-
-```java
-@Component
-class IncomingPayments {
-    private final CreditasClient creditas;
-    private final ApiKey key;
-    private final String accountId;
-    private final Invoices invoices; // your own
-
-    IncomingPayments(CreditasClient creditas, ApiKey key, CreditasProperties properties, Invoices invoices) {
-        this.creditas = creditas;
-        this.key = key;
-        this.accountId = Objects.requireNonNull(properties.accountId(), "creditas.account-id");
-        this.invoices = invoices;
-    }
-
-    // Every 10 minutes, at second 17. Three days back, since a payment is dated by its value date, not when it arrived.
-    @Scheduled(cron = "17 */10 * * * *")
-    void match() {
-        var today = LocalDate.now(ZoneId.of("Europe/Prague"));
-        try {
-            for (var t : creditas.transactions(key, accountId, today.minusDays(3), today)) {
-                var invoice = t.symbols().variable();
-                if (t.direction() == Transaction.Direction.CREDIT && invoice != null) {
-                    // Keyed by t.id() under a unique constraint: the same payment is read on every run, and on
-                    // every instance of the app.
-                    invoices.markPaid(t.id(), invoice, t.amount());
-                }
-            }
-        } catch (CreditasException.InvalidKey e) {
-            // Expired or revoked: only the account holder can issue a new key. Tell them, do not retry.
-            invoices.keyNeedsRenewal();
-        }
-        // Failed and NoAnswer pass: the next run tries again.
-    }
-}
-```
-
-`@EnableScheduling` on a configuration class turns it on.
+A job that marks invoices paid, in Java and Kotlin: [Using the library](../../.docs/usage.md#spring-boot).
 
 | Property | Default |
 |---|---|
