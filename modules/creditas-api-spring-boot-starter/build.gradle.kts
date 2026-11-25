@@ -62,3 +62,9 @@ java {
 tasks.jar {
     manifest { attributes("Automatic-Module-Name" to "cz.insuit.creditas.spring") }
 }
+
+tasks.compileJava {
+    // The metadata processor reads only @ConfigurationProperties and says so about every other annotation, which
+    // is not a fault. Only here: the client keeps the warning.
+    options.compilerArgs.add("-Xlint:-processing")
+}
