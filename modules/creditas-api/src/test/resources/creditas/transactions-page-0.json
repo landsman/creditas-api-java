@@ -1,0 +1,36 @@
+{
+  "transactions": [
+    {
+      "transactionId": "RLZ-820659828",
+      "category": "DOMESTIC",
+      "type": "CREDIT",
+      "code": "76",
+      "codeI18N": "Příchozí platba",
+      "partnerAccount": {
+        "number": "1900000007",
+        "bankCode": "0800",
+        "bankName": "Česká spořitelna, a.s.",
+        "partnerName": "Jana Nováková"
+      },
+      "amount": { "value": "1000.00", "currency": "CZK" },
+      "effectiveDate": "2026-11-23",
+      "variableSymbol": "0123456",
+      "specificSymbol": "",
+      "constantSymbol": "0308",
+      "payersReference": "INV-2026-17",
+      "remittanceInfo": "Faktura 2026017",
+      "balance": { "value": "97163.53", "currency": "CZK" },
+      "someFieldAddedLater": true
+    },
+    {
+      "transactionId": "RLZ-820659829",
+      "category": "CARD",
+      "type": "DEBIT",
+      "code": "11",
+      "amount": { "value": "249.9", "currency": "CZK" },
+      "effectiveDate": "2026-11-24",
+      "cardAuthorizationDate": "2026-11-22"
+    }
+  ],
+  "itemCount": 2
+}
