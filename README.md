@@ -25,6 +25,63 @@ try (var creditas = new CreditasClient()) {
 }
 ```
 
+### In Spring Boot
+
+Add `cz.insuit:creditas-api-spring-boot-starter` instead of the client (not published yet:
+[#10](https://github.com/landsman/creditas-api-java/issues/10)), and set the key and the account from the
+environment:
+
+```yaml
+creditas:
+  key: ${CREDITAS_KEY}
+  account-id: ${CREDITAS_ACCOUNT_ID}
+```
+
+The starter gives a `CreditasClient`, an `ApiKey` and `CreditasProperties` as beans. A job that marks invoices paid:
+
+```java
+@Component
+class IncomingPayments {
+    private final CreditasClient creditas;
+    private final ApiKey key;
+    private final String accountId;
+    private final Invoices invoices; // your own
+
+    IncomingPayments(CreditasClient creditas, ApiKey key, CreditasProperties properties, Invoices invoices) {
+        this.creditas = creditas;
+        this.key = key;
+        this.accountId = Objects.requireNonNull(properties.accountId(), "creditas.account-id");
+        this.invoices = invoices;
+    }
+
+    // Every 10 minutes, at second 17. Three days back, since a payment is dated by its value date, not when it arrived.
+    @Scheduled(cron = "17 */10 * * * *")
+    void match() {
+        var today = LocalDate.now(ZoneId.of("Europe/Prague"));
+        try {
+            for (var t : creditas.transactions(key, accountId, today.minusDays(3), today)) {
+                var invoice = t.symbols().variable();
+                if (t.direction() == Transaction.Direction.CREDIT && invoice != null) {
+                    // Keyed by t.id() under a unique constraint: the same payment is read on every run, and on
+                    // every instance of the app.
+                    invoices.markPaid(t.id(), invoice, t.amount());
+                }
+            }
+        } catch (CreditasException.InvalidKey e) {
+            // Expired or revoked: only the account holder can issue a new key. Tell them, do not retry.
+            invoices.keyNeedsRenewal();
+        }
+        // Failed and NoAnswer pass: the next run tries again.
+    }
+}
+```
+
+`@EnableScheduling` on a configuration class turns the job on. An application for many account holders leaves
+`creditas.key` out and passes each one's `ApiKey` with the call; the [starter's README](modules/creditas-api-spring-boot-starter/README.md)
+has the properties and what stops the application at startup.
+
+### Good to know
+
 - **One key opens one account**, and the key carries the rights of the person who issued it; see
   [setting it up](.docs/creditas-api.md#setting-it-up).
 - **Every failure is a `CreditasException`**, one subtype per thing to do about it: `InvalidKey` (ask the account
