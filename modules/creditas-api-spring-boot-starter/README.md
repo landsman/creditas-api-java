@@ -12,8 +12,10 @@ creditas:
 ```
 
 That is the whole setup for an application reading one account: inject `CreditasClient`, `ApiKey` and
-`CreditasProperties` for the account id. One serving many account holders leaves `creditas.key` unset and passes
-each one's key with the call. Keep the key in the environment, never in a committed file.
+`CreditasProperties` for the account id. One serving many account holders leaves `creditas.key` out of its
+configuration entirely and passes each one's key with the call: an empty value, as `${CREDITAS_KEY:}` gives with the
+variable unset, still counts as set and stops the application. Keep the key in the environment, never in a committed
+file.
 
 ```java
 @Service
@@ -36,7 +38,7 @@ class Payments {
 
 | Property | Default |
 |---|---|
-| `creditas.key` | unset: no `ApiKey` bean |
+| `creditas.key` | absent: no `ApiKey` bean; empty stops the application |
 | `creditas.account-id` | unset |
 | `creditas.base-uri` | `https://api.creditas.cz/oam/` |
 | `creditas.request-timeout` | `30s` |
