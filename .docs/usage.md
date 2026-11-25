@@ -3,42 +3,7 @@
 The same jar from Java, Kotlin and Spring Boot. The key and the account id come from the key's detail in internet
 banking; see [setting it up](creditas-api.md#setting-it-up).
 
-## Java
-
-```java
-try (var creditas = new CreditasClient()) {
-    var key = new ApiKey(System.getenv("CREDITAS_KEY"));
-    var accountId = System.getenv("CREDITAS_ACCOUNT_ID");
-
-    var balance = creditas.balance(key, accountId);
-    for (var t : creditas.transactions(key, accountId, LocalDate.now().minusDays(7), LocalDate.now())) {
-        if (t.direction() == Transaction.Direction.CREDIT && "2026017".equals(t.symbols().variable())) {
-            // mark invoice 2026017 paid with t.amount()
-        }
-    }
-}
-```
-
-## Kotlin
-
-The JSpecify annotations reach Kotlin, so a field Creditas may leave out is a `String?`.
-
-```kotlin
-CreditasClient().use { creditas ->
-    val key = ApiKey(System.getenv("CREDITAS_KEY"))
-    val accountId = System.getenv("CREDITAS_ACCOUNT_ID")
-
-    val balance = creditas.balance(key, accountId)
-    creditas.transactions(key, accountId, LocalDate.now().minusDays(7), LocalDate.now())
-        .filter { it.direction == Transaction.Direction.CREDIT }
-        .forEach { t ->
-            val invoice = t.symbols.variable ?: return@forEach
-            // mark invoice paid with t.amount
-        }
-}
-```
-
-## Spring Boot
+## Spring Boot, in Kotlin
 
 With the [starter](../modules/creditas-api-spring-boot-starter/README.md) (not published yet:
 [#10](https://github.com/landsman/creditas-api-java/issues/10)), the key and the account come from the environment:
@@ -49,7 +14,40 @@ creditas:
   account-id: ${CREDITAS_ACCOUNT_ID}
 ```
 
-A job that marks invoices paid, with `@EnableScheduling` on a configuration class:
+A job that marks invoices paid, with `@EnableScheduling` on a configuration class. Every 10 minutes, three days
+back, since a payment is dated by its value date, not when it arrived:
+
+```kotlin
+@Component
+class IncomingPayments(
+    private val creditas: CreditasClient,
+    private val key: ApiKey,
+    properties: CreditasProperties,
+    private val invoices: Invoices, // your own
+) {
+    private val accountId = requireNotNull(properties.accountId) { "creditas.account-id" }
+
+    @Scheduled(cron = "17 */10 * * * *")
+    fun match() {
+        val today = LocalDate.now(ZoneId.of("Europe/Prague"))
+        try {
+            creditas.transactions(key, accountId, today.minusDays(3), today)
+                .filter { it.direction == Transaction.Direction.CREDIT }
+                .forEach { t -> t.symbols.variable?.let { invoices.markPaid(t.id, it, t.amount) } }
+        } catch (e: CreditasException.InvalidKey) {
+            invoices.keyNeedsRenewal()
+        }
+    }
+}
+```
+
+Deduplicate by `t.id` under a unique constraint: the same payment is read on every run, and on every instance of
+the app. An `InvalidKey` means only the account holder can issue a new key, so tell them rather than retry;
+`Failed` and `NoAnswer` pass, and the next run tries again.
+
+## Other ways in
+
+<details><summary>Spring Boot, in Java</summary>
 
 ```java
 @Component
@@ -88,31 +86,46 @@ class IncomingPayments {
 }
 ```
 
-The same in Kotlin:
+</details>
+
+<details><summary>Kotlin, without Spring</summary>
+
+The JSpecify annotations reach Kotlin, so a field Creditas may leave out is a `String?`.
 
 ```kotlin
-@Component
-class IncomingPayments(
-    private val creditas: CreditasClient,
-    private val key: ApiKey,
-    properties: CreditasProperties,
-    private val invoices: Invoices, // your own
-) {
-    private val accountId = requireNotNull(properties.accountId) { "creditas.account-id" }
+CreditasClient().use { creditas ->
+    val key = ApiKey(System.getenv("CREDITAS_KEY"))
+    val accountId = System.getenv("CREDITAS_ACCOUNT_ID")
 
-    @Scheduled(cron = "17 */10 * * * *")
-    fun match() {
-        val today = LocalDate.now(ZoneId.of("Europe/Prague"))
-        try {
-            creditas.transactions(key, accountId, today.minusDays(3), today)
-                .filter { it.direction == Transaction.Direction.CREDIT }
-                .forEach { t -> t.symbols.variable?.let { invoices.markPaid(t.id, it, t.amount) } }
-        } catch (e: CreditasException.InvalidKey) {
-            invoices.keyNeedsRenewal()
+    val balance = creditas.balance(key, accountId)
+    creditas.transactions(key, accountId, LocalDate.now().minusDays(7), LocalDate.now())
+        .filter { it.direction == Transaction.Direction.CREDIT }
+        .forEach { t ->
+            val invoice = t.symbols.variable ?: return@forEach
+            // mark invoice paid with t.amount
+        }
+}
+```
+
+</details>
+
+<details><summary>Java, without Spring</summary>
+
+```java
+try (var creditas = new CreditasClient()) {
+    var key = new ApiKey(System.getenv("CREDITAS_KEY"));
+    var accountId = System.getenv("CREDITAS_ACCOUNT_ID");
+
+    var balance = creditas.balance(key, accountId);
+    for (var t : creditas.transactions(key, accountId, LocalDate.now().minusDays(7), LocalDate.now())) {
+        if (t.direction() == Transaction.Direction.CREDIT && "2026017".equals(t.symbols().variable())) {
+            // mark invoice 2026017 paid with t.amount()
         }
     }
 }
 ```
+
+</details>
 
 ## Good to know
 
