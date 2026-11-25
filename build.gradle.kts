@@ -43,7 +43,9 @@ subprojects {
             "errorprone"("com.uber.nullaway:nullaway:0.14.4")
         }
         tasks.withType<JavaCompile>().configureEach {
-            options.compilerArgs.addAll(listOf("-Xlint:all,-serial", "-Werror"))
+            // -processing: the starter's metadata processor reads only @ConfigurationProperties and says so about
+            // every other annotation, which is not a fault.
+            options.compilerArgs.addAll(listOf("-Xlint:all,-serial,-processing", "-Werror"))
             options.errorprone {
                 check("NullAway", CheckSeverity.ERROR)
                 option("NullAway:JSpecifyMode", "true")

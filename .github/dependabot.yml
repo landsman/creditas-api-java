@@ -8,6 +8,9 @@ updates:
       default-days: 7
     commit-message:
       prefix: deps
+    # The starter compiles against the oldest Spring Boot it supports; a bump would raise that floor.
+    ignore:
+      - dependency-name: org.springframework.boot:spring-boot-dependencies
   - package-ecosystem: github-actions
     directory: /
     schedule:

@@ -1,0 +1,97 @@
+package cz.insuit.creditas.spring;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+
+import com.sun.net.httpserver.HttpServer;
+import cz.insuit.creditas.ApiKey;
+import cz.insuit.creditas.CreditasClient;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.atomic.AtomicReference;
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.autoconfigure.AutoConfigurations;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+class CreditasAutoConfigurationTest {
+
+    private final ApplicationContextRunner context =
+            new ApplicationContextRunner().withConfiguration(AutoConfigurations.of(CreditasAutoConfiguration.class));
+
+    @Test
+    void givesAClientAndNoKeyWhenNoneIsSet() {
+        context.run(app -> {
+            assertNotNull(app.getBean(CreditasClient.class));
+            assertFalse(app.containsBean("creditasApiKey"));
+        });
+    }
+
+    @Test
+    void givesTheKeyOfTheOneAccountWhenItIsSet() {
+        context.withPropertyValues("creditas.key=Ab12\n", "creditas.account-id=acc-1")
+                .run(app -> {
+                    assertEquals(new ApiKey("Ab12"), app.getBean(ApiKey.class));
+                    assertEquals("acc-1", app.getBean(CreditasProperties.class).accountId());
+                });
+    }
+
+    @Test
+    void aKeyWithNothingInItStopsTheApplication() {
+        context.withPropertyValues("creditas.key=  ").run(app -> assertNotNull(app.getStartupFailure()));
+    }
+
+    @Test
+    void aBaseUriThatIsNotOneStopsTheApplication() {
+        context.withPropertyValues("creditas.base-uri=api.creditas.cz")
+                .run(app -> assertNotNull(app.getStartupFailure()));
+    }
+
+    @Test
+    void callsTheBaseUriItIsGiven() throws IOException {
+        var path = new AtomicReference<String>();
+        var server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
+        server.createContext("/", exchange -> {
+            path.set(exchange.getRequestURI().getPath());
+            var body = "{\"currency\":\"CZK\",\"currentBalance\":\"1\",\"availableBalance\":\"1\"}"
+                    .getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, body.length);
+            try (var out = exchange.getResponseBody()) {
+                out.write(body);
+            }
+        });
+        server.start();
+        try {
+            var host = server.getAddress().getAddress().getHostAddress();
+            var base = "http://" + (host.contains(":") ? "[" + host + "]" : host) + ":"
+                    + server.getAddress().getPort() + "/oam";
+            context.withPropertyValues("creditas.base-uri=" + base, "creditas.request-timeout=5s")
+                    .run(app -> app.getBean(CreditasClient.class).balance(new ApiKey("Ab12"), "acc-1"));
+            assertEquals("/oam/v1/account/balance/get", path.get());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void backsOffForTheApplicationsOwnClient() {
+        context.withUserConfiguration(OwnClient.class).run(app -> {
+            assertSame(app.getBean(OwnClient.class).client, app.getBean(CreditasClient.class));
+        });
+    }
+
+    @Configuration(proxyBeanMethods = false)
+    static class OwnClient {
+        final CreditasClient client = new CreditasClient();
+
+        @Bean
+        CreditasClient ownCreditasClient() {
+            return client;
+        }
+    }
+}
