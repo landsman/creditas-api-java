@@ -54,11 +54,6 @@ dependencyAnalysis {
     }
 }
 
-java {
-    withSourcesJar()
-    withJavadocJar()
-}
-
 tasks.jar {
     manifest { attributes("Automatic-Module-Name" to "cz.insuit.creditas.spring") }
 }

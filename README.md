@@ -18,6 +18,7 @@ try (var creditas = new CreditasClient()) {
 | [Using the library](.docs/usage.md) | reading payments, the failures, what a transaction holds |
 | [Spring Boot starter](modules/creditas-api-spring-boot-starter/README.md) | `creditas.*` in `application.yml`, a job that marks invoices paid |
 | [Creditas API](.docs/creditas-api.md) | what the bank offers, issuing a key, the endpoints, what is still unknown |
+| [Development](.docs/development.md) | build, tests, releasing to Maven Central |
 | [Creditas: Creditas API](https://www.creditas.cz/creditas-api) | the bank's own page, with its PDF documentation |
 | [PremiumAPI on SwaggerHub](https://app.swaggerhub.com/apis/Creditas/PremiumAPI/1.0.1) | the specification this client follows |
 

@@ -11,6 +11,8 @@ on:
       - '*.gradle.kts'
       - 'gradlew'
       - 'Makefile'
+      - 'bin/**'
+      - 'mise.toml'
       - '.github/workflows/ci.yml'
   # A draft runs nothing; marking it ready for review starts the run.
   pull_request:
@@ -49,3 +51,15 @@ jobs:
       - run: make build TESTS_JDK=${{ matrix.jdk }}
       # The starter compiles against Spring Boot 3.5; this runs its tests on 4, the version a new application brings.
       - run: ./gradlew :modules:creditas-api-spring-boot-starter:test -PtestSpringBoot=4.1.2 -PtestsJdk=${{ matrix.jdk }}
+
+  scripts:
+    name: shell scripts
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # The shellcheck pinned in mise.toml, not the runner's: versions give one finding different codes.
+      - uses: jdx/mise-action@v5
+        with:
+          install_args: shellcheck
+      - run: make scripts-test

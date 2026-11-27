@@ -1,3 +1,5 @@
+import com.vanniktech.maven.publish.DeploymentValidation
+import com.vanniktech.maven.publish.MavenPublishBaseExtension
 import net.ltgt.gradle.errorprone.CheckSeverity
 import net.ltgt.gradle.errorprone.errorprone
 
@@ -5,15 +7,19 @@ plugins {
     id("com.diffplug.spotless") version "8.11.0"
     id("com.autonomousapps.dependency-analysis") version "3.20.4"
     id("net.ltgt.errorprone") version "5.2.0" apply false
+    id("com.vanniktech.maven.publish") version "0.37.0" apply false
 }
 
 // Compiled once, for release 21, on whatever JDK runs Gradle; the tests run on the JDK -PtestsJdk names, so CI's
 // matrix checks the jar on each JDK it supports.
 val testsJdk = providers.gradleProperty("testsJdk")
 
+// A tag vX.Y.Z releases X.Y.Z (-PreleaseVersion, set by `make publish`); anything else is the next snapshot.
+val releaseVersion = providers.gradleProperty("releaseVersion").orElse("0.1.0-SNAPSHOT")
+
 allprojects {
     group = "cz.insuit"
-    version = "0.1.0-SNAPSHOT"
+    version = releaseVersion.get()
 
     repositories {
         mavenCentral()
@@ -53,6 +59,43 @@ subprojects {
         tasks.withType<Javadoc>().configureEach {
             // An @param per record component would only repeat its name; broken links still fail.
             (options as StandardJavadocDocletOptions).addStringOption("Xdoclint:all,-missing", "-quiet")
+        }
+
+        // Published to Maven Central through the Central Portal; .docs/development.md says how a release is cut.
+        apply(plugin = "com.vanniktech.maven.publish")
+        configure<MavenPublishBaseExtension> {
+            // Released as soon as the Portal has validated it: the tag was the decision. The job waits until Central
+            // has published it, so a refused or stuck deployment fails the release run.
+            publishToMavenCentral(automaticRelease = true, validateDeployment = DeploymentValidation.PUBLISHED)
+            // Central refuses unsigned artifacts. The key comes from the environment (.docs/development.md);
+            // without one, publishToMavenLocal still works, unsigned.
+            if (providers.gradleProperty("signingInMemoryKey").isPresent) {
+                signAllPublications()
+            }
+            pom {
+                name = project.name
+                // Lazily: the module sets its description after this block has run.
+                description = provider { project.description }
+                url = "https://github.com/landsman/creditas-api-java"
+                licenses {
+                    license {
+                        name = "Apache License 2.0"
+                        url = "https://www.apache.org/licenses/LICENSE-2.0"
+                    }
+                }
+                developers {
+                    developer {
+                        id = "landsman"
+                        name = "Michal Landsman"
+                        url = "https://www.insuit.cz"
+                    }
+                }
+                scm {
+                    url = "https://github.com/landsman/creditas-api-java"
+                    connection = "scm:git:https://github.com/landsman/creditas-api-java.git"
+                    developerConnection = "scm:git:ssh://git@github.com/landsman/creditas-api-java.git"
+                }
+            }
         }
     }
 }
